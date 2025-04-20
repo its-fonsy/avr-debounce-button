@@ -1,64 +1,43 @@
-#include <avr/interrupt.h>
 #include <avr/io.h>
 
 #include "button.h"
+#include "hal.h"
 
-uint8_t db_pre_s = 0; /* Debounced pressed state */
-uint8_t db_rel_s = 0; /* Debounced release state */
+void button_init(button_t* button)
+{
+    /* Set button pin as input */
+    reset_pin(*(button->dir_reg), button->pin);
 
-void button_init() {
-  /* Set pin 13 as output, use pull-up resistor for pin 8 and 9 */
+    /* Activate pull up resistor */
+    set_pin(*(button->port_reg), button->pin);
 
-  DDRB = (1 << PINB5);
-  PORTB = (1 << PINB0) | (1 << PINB1);
-
-  /* Configure Timer 1 */
-
-  OCR1A = 78;
-  TIMSK1 = (1 << OCIE1A); /* Enable compare match interrupt */
-  TCCR1B = (1 << WGM12) | (1 << CS12) |
-           (1 << CS10); /* Configure Timer1 prescaler and CTC mode */
+    button->history = 0xFF;
+    button->status = BUTTON_IDLE;
+    button->lock = BUTTON_UNLOCKED;
 }
 
-uint8_t pressed_button() {
-  static uint8_t state = BTN_WAIT4PRESS;
+void button_update(button_t* button)
+{
+    uint8_t pin_val;
 
-  if ((state == BTN_WAIT4PRESS) && (db_pre_s != 0)) {
-    state = BTN_WAIT4RELEASE;
-    if (db_pre_s == 1)
-      return BTN_PRESSED_0;
-    else
-      return BTN_PRESSED_1;
-  } else if ((state == BTN_WAIT4RELEASE) && (db_rel_s == 0)) {
-    state = BTN_WAIT4PRESS;
-  }
+    if (button->lock == BUTTON_LOCKED || button->status == BUTTON_PRESSED)
+        return;
 
-  return BTN_PRESSED_NONE;
-}
+    button->lock = BUTTON_LOCKED;
 
-ISR(TIMER1_COMPA_vect) {
-  static uint8_t bounce_history[DEBOUNCE_N_CHECKS] = {0};
-  static uint8_t h_idx = 0;
-  uint8_t i;
-  uint8_t raw;
-  uint8_t db_pres;
-  uint8_t db_rel;
+    pin_val = status_pin(*(button->pin_reg), button->pin);
+    button->history = (button->history << 1) | pin_val;
 
-  raw = PINB;
-  bounce_history[h_idx] = ~raw & BTN_PIN_MASK;
+    switch (button->status) {
+    case BUTTON_IDLE:
+        if (button->history == 0xFF)
+            button->status = BUTTON_PRESSED;
+        break;
+    case BUTTON_PRESS_ACK:
+        if (button->history == 0x00)
+            button->status = BUTTON_IDLE;
+        break;
+    }
 
-  h_idx++;
-  if (h_idx >= DEBOUNCE_N_CHECKS) {
-    h_idx = 0;
-  }
-
-  db_pres = 0xFF;
-  db_rel = 0x00;
-  for (i = 0; i < DEBOUNCE_N_CHECKS; i++) {
-    db_pres &= bounce_history[i];
-    db_rel |= bounce_history[i];
-  }
-
-  db_pre_s = db_pres;
-  db_rel_s = db_rel;
+    button->lock = BUTTON_UNLOCKED;
 }

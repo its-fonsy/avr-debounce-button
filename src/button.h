@@ -1,18 +1,30 @@
-#ifndef _BUTTON_H
-#define _BUTTON_H
+#ifndef __BUTTON_H
+#define __BUTTON_H
 
-#define	DEBOUNCE_N_CHECKS	7
-#define	BTN_PIN_MASK		0x03
+#include <stdint.h>
 
 enum {
-	BTN_WAIT4PRESS = 0,
-	BTN_WAIT4RELEASE,
-	BTN_PRESSED_0,
-	BTN_PRESSED_1,
-	BTN_PRESSED_NONE,
+    BUTTON_IDLE,
+    BUTTON_PRESSED,
+    BUTTON_PRESS_ACK
 };
 
-void button_init();
-uint8_t pressed_button();
+enum {
+    BUTTON_LOCKED,
+    BUTTON_UNLOCKED
+};
 
-#endif // _USART_H
+typedef struct {
+    volatile uint8_t* dir_reg;
+    volatile uint8_t* port_reg;
+    volatile uint8_t* pin_reg;
+    uint8_t pin;
+    uint8_t history;
+    uint8_t status;
+    uint8_t lock;
+} button_t;
+
+void button_init(button_t* button);
+void button_update(button_t* button);
+
+#endif // __BUTTON_H

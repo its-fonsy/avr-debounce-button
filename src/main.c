@@ -1,37 +1,50 @@
-#define F_CPU 16000000UL // 16 MHz Crystal
-
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include <stdlib.h>
-#include <string.h>
 #include <util/delay.h>
 
 #include "button.h"
+#include "hal.h"
 #include "uart.h"
 
-int main(void) {
-  uart_init(115200, UART_HIGH_SPEED_ACTIVE);
+button_t btn;
 
-  button_init();
+int main(void)
+{
+    set_pin(DDRB, PB5);
 
-  sei();
+    btn.port_reg = &PORTB;
+    btn.dir_reg = &DDRB;
+    btn.pin_reg = &PINB;
+    btn.pin = PB4;
 
-  char c[16];
-  uint8_t b = BTN_PRESSED_NONE;
-  uint8_t i = 0;
+    uart_init(115200, UART_HIGH_SPEED_ACTIVE);
+    button_init(&btn);
 
-  while (1) {
-    b = pressed_button();
-    switch (b) {
-    case BTN_PRESSED_0:
-      i++;
-      break;
-    case BTN_PRESSED_1:
-      i--;
-      break;
-    case BTN_PRESSED_NONE:
-      break;
+    /* Configure Timer 1
+     *   - PRESCALER = 1024
+     *   - MODE = CTC
+     *   - INTERRUPT = On match
+     */
+    OCR1A = 1;
+    TIMSK1 = (1 << OCIE1A);
+    TCCR1B = (1 << WGM12) | (1 << CS12) | (1 << CS10);
+
+    sei();
+
+    while (1) {
+
+        btn.lock = BUTTON_LOCKED;
+        if (btn.status == BUTTON_PRESSED) {
+            toggle_pin(PORTB, PB5);
+            btn.status = BUTTON_PRESS_ACK;
+        }
+        btn.lock = BUTTON_UNLOCKED;
+
+        _delay_ms(5);
     }
-    _delay_ms(10);
-  }
+}
+
+ISR(TIMER1_COMPA_vect)
+{
+    button_update(&btn);
 }

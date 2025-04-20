@@ -10,7 +10,7 @@
 /* Input IO register operations */
 
 #define status_pin(port, pin) (((port) >> (pin)) & 0x01)
-#define pin_is_high(port, pin) (status_pin ((port), (pin)) == 0x01)
-#define pin_is_low(port, pin) (status_pin ((port), (pin)) == 0x00)
+#define pin_is_high(port, pin) (status_pin((port), (pin)) == 0x01)
+#define pin_is_low(port, pin) (status_pin((port), (pin)) == 0x00)
 
 #endif
