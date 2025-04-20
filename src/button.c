@@ -1,9 +1,7 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include <stdlib.h>
 
 #include "button.h"
-#include "usart.h"
 
 uint8_t db_pre_s = 0; /* Debounced pressed state */
 uint8_t db_rel_s = 0; /* Debounced release state */
