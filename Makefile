@@ -18,15 +18,13 @@ AVRSIZE = avr-size
 AVRDUDE = avrdude
 
 # Project folder
-TARGET = main
-# TARGET = $(lastword $(subst /, ,$(CURDIR)))
+TARGET = button
 
 SRC_DIR = src
-INC_DIR = inc
 OBJ_DIR = obj
 
 SRCS = $(wildcard $(SRC_DIR)/*.c)
-INCS = $(wildcard $(INC_DIR)/*.h)
+INCS = $(wildcard $(SRC_DIR)/*.h)
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 # C Flags
@@ -39,6 +37,11 @@ CFLAGS += -ffunction-sections -fdata-sections
 LDFLAGS  = -Wl,-Map,$(TARGET).map 
 LDFLAGS += -Wl,--gc-sections 
 TARGET_ARCH = -mmcu=$(MCU)
+
+# These targets don't have files named after them
+.PHONY: all size clean flash info
+
+all: $(TARGET).hex 
 
 # Generate Objects files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(INCS) Makefile
@@ -53,21 +56,16 @@ $(TARGET).elf: $(OBJS)
 $(TARGET).hex: $(TARGET).elf
 	 $(OBJCOPY) -j .text -j .data -O ihex $< $@
 
-## These targets don't have files named after them
-.PHONY: all size clean flash
-
-all: $(TARGET).hex 
-
-debug:
+info:
 	@echo
 	@echo "Source files:"  $(SRCS)
-	@echo "Obkect files:"  $(OBJS)
+	@echo "Object files:"  $(OBJS)
 	@echo "         MCU:"  $(MCU)
 	@echo "       F_CPU:"  $(F_CPU)
 	@echo "        BAUD:"  $(BAUD)
 	@echo	
 
-size:  $(TARGET).elf
+size: $(TARGET).elf
 	$(AVRSIZE) -C --mcu=$(MCU) $(TARGET).elf
 
 clean:
