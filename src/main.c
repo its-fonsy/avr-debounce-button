@@ -3,31 +3,29 @@
 #include <util/delay.h>
 
 #include "button.h"
-#include "hal.h"
-#include "uart.h"
+
+#define LED_PIN PB5
+#define BUTTON_PIN PB4
+
+void button_init_gpio();
+void timer1_init();
+uint8_t button_read_pin();
 
 button_t btn;
 
 int main(void)
 {
-    set_pin(DDRB, PB5);
+    /* Set led pin as output and turn it off */
+    DDRB |= _BV(LED_PIN);
+    PORTB &= ~(_BV(LED_PIN));
 
-    btn.port_reg = &PORTB;
-    btn.dir_reg = &DDRB;
-    btn.pin_reg = &PINB;
-    btn.pin = PB4;
-
-    uart_init(115200, UART_HIGH_SPEED_ACTIVE);
+    /* Configure and initialize button */
+    btn.read_pin = &button_read_pin;
+    button_init_gpio();
     button_init(&btn);
 
-    /* Configure Timer 1
-     *   - PRESCALER = 1024
-     *   - MODE = CTC
-     *   - INTERRUPT = On match
-     */
-    OCR1A = 1;
-    TIMSK1 = (1 << OCIE1A);
-    TCCR1B = (1 << WGM12) | (1 << CS12) | (1 << CS10);
+    /* Configure and start the timer */
+    timer1_init();
 
     sei();
 
@@ -35,7 +33,7 @@ int main(void)
 
         btn.lock = BUTTON_LOCKED;
         if (btn.status == BUTTON_PRESSED) {
-            toggle_pin(PORTB, PB5);
+            PORTB ^= _BV(LED_PIN);
             btn.status = BUTTON_PRESS_ACK;
         }
         btn.lock = BUTTON_UNLOCKED;
@@ -44,7 +42,27 @@ int main(void)
     }
 }
 
-ISR(TIMER1_COMPA_vect)
+/* Configure Timer 1
+ *   - PRESCALER = 1024
+ *   - MODE = CTC
+ *   - INTERRUPT = On match
+ */
+void timer1_init()
 {
-    button_update(&btn);
+    OCR1A = 78;
+    TIMSK1 = (1 << OCIE1A);
+    TCCR1B = (1 << WGM12) | (1 << CS12) | (1 << CS10);
 }
+
+void button_init_gpio()
+{
+    /* Set pin as input */
+    DDRB &= ~(_BV(BUTTON_PIN));
+
+    /* Activate PULL-UP resistor */
+    PORTB |= _BV(BUTTON_PIN);
+}
+
+uint8_t button_read_pin() { return bit_is_set(PINB, BUTTON_PIN) ? 0x01 : 0x00; }
+
+ISR(TIMER1_COMPA_vect) { button_update(&btn); }

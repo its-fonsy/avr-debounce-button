@@ -15,10 +15,7 @@ enum {
 };
 
 typedef struct {
-    volatile uint8_t* dir_reg;
-    volatile uint8_t* port_reg;
-    volatile uint8_t* pin_reg;
-    uint8_t pin;
+    uint8_t (*read_pin)();
     uint8_t history;
     uint8_t status;
     uint8_t lock;
